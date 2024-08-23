@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 export default function NavBar() {
   const navigate = useNavigate()
   function logout() {
-    localStorage.removeItem('token') // Remove only the 'token' from local storage
+    localStorage.clear() // Remove only the 'token' from local storage
     navigate('/') // Navigate to the home page
   }
   return (

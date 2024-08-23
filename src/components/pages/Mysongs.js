@@ -10,8 +10,8 @@ export default function Mysongs() {
   const status = useSelector((state) => state.data.status)
   const error = useSelector((state) => state.data.error)
   const [currentPlaying, setCurrentPlaying] = useState(null)
-  const [progress, setProgress] = useState({})
-  const [duration, setDuration] = useState({})
+  const [progress, setProgress] = useState({}) // Object to store progress for each song
+  const [duration, setDuration] = useState({}) // Object to store duration for each song
   const audioRefs = useRef([]) // Refs to hold audio elements
   const [addedSongs, setAddedSongs] = useState({}) // Object to track added songs
 
@@ -30,40 +30,57 @@ export default function Mysongs() {
 
   useEffect(() => {
     const lastPausedSongId = localStorage.getItem('lastPausedSongId')
-    const lastPlaybackTime = localStorage.getItem('lastPlaybackTime')
+    const lastPlaybackTime = parseFloat(
+      localStorage.getItem('lastPlaybackTime')
+    ) // Ensure it's a number
 
     if (lastPausedSongId && lastPlaybackTime) {
       const index = data.findIndex((item) => item._id === lastPausedSongId)
       if (index !== -1) {
         const audioElement = audioRefs.current[index]
         if (audioElement) {
-          audioElement.currentTime = parseFloat(lastPlaybackTime)
-          setCurrentPlaying(index)
+          audioElement.currentTime = lastPlaybackTime
+          setCurrentPlaying(index) // Set currentPlaying here for immediate visual feedback
         }
       }
     }
+
+    // Pre-load song durations for immediate display on page load
+    data.forEach((item, index) => {
+      const audioElement = audioRefs.current[index]
+      if (audioElement) {
+        audioElement.addEventListener('loadedmetadata', () => {
+          setDuration((prevDuration) => ({
+            ...prevDuration,
+            [index]: audioElement.duration,
+          }))
+        })
+      }
+    })
   }, [data])
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
-    return `${minutes}:${secs < 10 ? `0${secs}` : secs}`
+    return `${minutes.toString().padStart(2, '0')}:${secs
+      .toString()
+      .padStart(2, '0')}`
   }
 
   const togglePlayPause = (index) => {
     const currentAudio = audioRefs.current[index]
 
     if (currentPlaying === index) {
-      // If the clicked audio is already playing, pause it
+      // If clicked audio is already playing, pause it
       if (!currentAudio.paused) {
         currentAudio.pause()
         localStorage.setItem('lastPausedSongId', data[index]._id)
         localStorage.setItem('lastPlaybackTime', currentAudio.currentTime)
-        setCurrentPlaying(null)
+        setCurrentPlaying(null) // Set currentPlaying to null for visual feedback
       } else {
         currentAudio
           .play()
-          .catch((err) => console.error('Playback error:', err))
+          .catch((err) => console.error('Playback error:', err)) // Handle playback errors
       }
     } else {
       // Pause the currently playing audio (if any)
@@ -76,12 +93,12 @@ export default function Mysongs() {
         }
       }
 
-      // Set the current time for the new audio and play it
+      // Play the clicked audio
       if (currentAudio) {
-        currentAudio.currentTime = localStorage.getItem('lastPlaybackTime') || 0
+        currentAudio.currentTime = 0 // Start playing from the beginning (fix for previous song's time)
         currentAudio
           .play()
-          .catch((err) => console.error('Playback error:', err))
+          .catch((err) => console.error('Playback error:', err)) // Handle playback errors
         setCurrentPlaying(index)
       }
     }
@@ -93,10 +110,6 @@ export default function Mysongs() {
       setProgress((prevProgress) => ({
         ...prevProgress,
         [index]: (audioElement.currentTime / audioElement.duration) * 100,
-      }))
-      setDuration((prevDuration) => ({
-        ...prevDuration,
-        [index]: audioElement.duration,
       }))
     }
   }
@@ -154,11 +167,11 @@ export default function Mysongs() {
           <h1 className="text-center md:text-[40px] font-bold my-[5px]">
             BeatBoxx Trends
           </h1>
-          <div className="grid  md:grid-cols-2  gap-[10px]">
+          <div className="grid md:grid-cols-2 gap-[10px]">
             {data.map((item, index) => (
               <div
                 key={index}
-                className=" bg-gray-300 px-[20px] py-[20px]  rounded-lg">
+                className="bg-gray-300 px-[20px] py-[20px] rounded-lg">
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center space-x-[20px]">
                     <img
@@ -167,12 +180,10 @@ export default function Mysongs() {
                       alt={item.name}
                     />
                     <div className="flex flex-col w-[200px]">
-                      {' '}
-                      {/* Set a max width to control overflow */}
                       <h1 className="text-gray-800 truncate font-bold text-[20px] text-center">
                         {item.name}
                       </h1>
-                      <h1 className="text-center text-gray-600 truncate overflow-hidden whitespace-nowrap  text-sm">
+                      <h1 className="text-center text-gray-600 truncate overflow-hidden whitespace-nowrap text-sm">
                         {item.artist}
                       </h1>
                     </div>
@@ -187,7 +198,7 @@ export default function Mysongs() {
                     <div className="flex space-x-[20px]">
                       <button
                         onClick={() => togglePlayPause(index)}
-                        className="rounded-full block my-2 ">
+                        className="rounded-full block my-2">
                         {currentPlaying === index &&
                         !audioRefs.current[index]?.paused ? (
                           <i
